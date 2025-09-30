@@ -49,6 +49,7 @@ import kotlin.coroutines.suspendCoroutine
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.pow
+import dji.sdk.sdkmanager.LiveStreamManager
 
 data class CommandCompleted(val completed: Boolean, val errorDescription: String?)
 
@@ -179,6 +180,7 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
                 throttleControl()
                 yawControl()
                 rollPitchControl()
+                livestreamControl()
             }
         }.start(wait = false)
     }
@@ -848,6 +850,41 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
             }
         }
 
+    }
+
+    private fun Route.livestreamControl() {
+
+        get("/livestream/start/{url}") {
+            val streamUrl = call.parameters["url"]
+            val livestreamManager = dji.sdk.sdkmanager.DJISDKManager.getInstance().liveStreamManager
+
+            if (livestreamManager == null) {
+                call.respond(CommandCompleted(false, "Drone not connected or livestream not supported (code: -1)"))
+                return@get
+            }
+
+            if (streamUrl.isNullOrBlank()) {
+                call.respond(CommandCompleted(false, "Missing RTMP URL (code: -2)"))
+                return@get
+            }
+
+            livestreamManager.setLiveUrl(streamUrl)
+            val started = livestreamManager.startStream()
+            call.respond(CommandCompleted(true, "Livestream start result: code $started"))
+        }
+
+        get("/livestream/stop") {
+            val livestreamManager = dji.sdk.sdkmanager.DJISDKManager.getInstance().liveStreamManager
+
+            if (livestreamManager == null) {
+                call.respond(CommandCompleted(false, "Drone not connected or livestream not supported (code: -1)"))
+                return@get
+            }
+
+            val stopped = livestreamManager.stopStream()
+            call.respond(CommandCompleted(true, "Livestream stop result: code $stopped"))
+
+        }
     }
 
     private fun Route.velocityControl() {
