@@ -18,6 +18,8 @@ import android.text.format.Formatter
 import android.util.Base64
 import android.util.Log
 import android.widget.TextView
+import android.view.TextureView
+import android.graphics.SurfaceTexture
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import dji.common.camera.SettingsDefinitions
@@ -50,6 +52,8 @@ import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.pow
 import dji.sdk.sdkmanager.LiveStreamManager
+import dji.sdk.camera.VideoFeeder
+import dji.sdk.codec.DJICodecManager
 
 data class CommandCompleted(val completed: Boolean, val errorDescription: String?)
 
@@ -130,6 +134,13 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
     private var followingVelocityCommands = false
     private var velocityControlRunnable: Runnable? = null
 
+    //livestream constants
+    private var codecManager: DJICodecManager? = null
+    private lateinit var textureView: TextureView
+    private val videoDataListener = VideoFeeder.VideoDataListener { videoBuffer, size ->
+        codecManager?.sendDataToDecoder(videoBuffer, size)
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -139,6 +150,9 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
         regText = findViewById(R.id.regText)
         droneNameText = findViewById(R.id.droneNameText)
         batteryText = findViewById(R.id.batteryText)
+
+        // Visible TextureView for DJI video feed (not hidden!)
+        textureView = findViewById(R.id.dji_video_texture)
 
         displayIP()
         startServer()
@@ -881,8 +895,8 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
                 return@get
             }
 
-            val stopped = livestreamManager.stopStream()
-            call.respond(CommandCompleted(true, "Livestream stop result: code $stopped"))
+            livestreamManager.stopStream()
+            call.respond(CommandCompleted(true, "Livestream stopped async. Run isStreaming to check real time status."))
 
         }
     }
@@ -1508,6 +1522,27 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
         }
     }
 
+    private fun setupVideoPipelineIfReady() {
+        // Only setup if textureView is available and surface is ready
+        if (::textureView.isInitialized && textureView.isAvailable) {
+            codecManager = DJICodecManager(this, textureView.surfaceTexture, textureView.width, textureView.height)
+            VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(videoDataListener)
+            Log.d(TAG, "DJI Video pipeline initialized")
+        } else {
+            // Wait until surface is available
+            textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+                    codecManager = DJICodecManager(this@MainActivity, surface, width, height)
+                    VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(videoDataListener)
+                    Log.d(TAG, "DJI Video pipeline initialized (late)")
+                }
+                override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+                override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean = false
+                override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+            }
+        }
+    }
+
     private fun removeComponentCallbacks() {
         drone?.battery?.setStateCallback(null)
     }
@@ -1529,6 +1564,9 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
 
         updateDroneDetails()
         notifyStatusChanged()
+        // Now set up video pipeline since SDK and product are ready!
+        setupVideoPipelineIfReady()
+
     }
 
     override fun onProductChanged(product: BaseProduct?) {
@@ -1545,6 +1583,13 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
         drone = null
         updateDroneDetails()
         notifyStatusChanged()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        VideoFeeder.getInstance().primaryVideoFeed.removeVideoDataListener(videoDataListener)
+        codecManager?.cleanSurface()
+        codecManager = null
     }
 
     override fun onComponentChange(
