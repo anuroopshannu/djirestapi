@@ -54,6 +54,8 @@ import kotlin.math.pow
 import dji.sdk.sdkmanager.LiveStreamManager
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
+import dji.sdk.sdkmanager.LiveVideoBitRateMode
+import dji.sdk.sdkmanager.LiveVideoResolution
 
 data class CommandCompleted(val completed: Boolean, val errorDescription: String?)
 
@@ -883,8 +885,19 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
             }
 
             livestreamManager.setLiveUrl(streamUrl)
+
+            // Set video encode parameters BEFORE start()
+            livestreamManager.setLiveVideoBitRateMode(LiveVideoBitRateMode.AUTO)
+//            livestreamManager.setLiveVideoBitRate(512.0F) // kbps, adjust as needed
+
+// If supported by your SDK/drone:
+            livestreamManager.setLiveVideoResolution(LiveVideoResolution.VIDEO_RESOLUTION_480_360)
+
+
             val started = livestreamManager.startStream()
-            call.respond(CommandCompleted(true, "Livestream start result: code $started"))
+            val res = livestreamManager.getLiveVideoResolution()
+            val bitrate = livestreamManager.getLiveVideoBitRate()
+            call.respond(CommandCompleted(true, "Livestream start reslt: code - $started, res - $res, bitrate - $bitrate"))
         }
 
         get("/livestream/stop") {
