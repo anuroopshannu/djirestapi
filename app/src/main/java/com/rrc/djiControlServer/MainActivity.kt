@@ -57,6 +57,9 @@ import dji.sdk.codec.DJICodecManager
 import dji.sdk.sdkmanager.LiveVideoBitRateMode
 import dji.sdk.sdkmanager.LiveVideoResolution
 
+import fi.iki.elonen.NanoHTTPD
+import java.util.concurrent.LinkedBlockingQueue
+
 data class CommandCompleted(val completed: Boolean, val errorDescription: String?)
 
 data class DroneState<T>(val state:T)
@@ -110,6 +113,8 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
     private lateinit var droneNameText: TextView
     private lateinit var batteryText: TextView
 
+    private lateinit var mjpegServer: MjpegStreamServer
+
     private var drone: Aircraft? = null
 
     private var imuStates = mutableListOf<IMUState?>()
@@ -135,6 +140,17 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
     private var velocityModeYawVel = 0f
     private var followingVelocityCommands = false
     private var velocityControlRunnable: Runnable? = null
+
+    private fun pushPreviewToMjpeg() {
+        if (::textureView.isInitialized && textureView.isAvailable) {
+            val bitmap = textureView.bitmap // get current frame as Bitmap
+            if (bitmap != null) {
+                val out = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 60, out) // 60 = quality
+                mjpegServer.pushFrame(out.toByteArray())
+            }
+        }
+    }
 
     //livestream constants
     private var codecManager: DJICodecManager? = null
@@ -169,6 +185,19 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
         regText.text = getString(R.string.registering)
 
         sdkManager.registerApp(this, this)
+
+        // Start MJPEG server on port 8090 in a background thread
+        mjpegServer = MjpegStreamServer(8090)
+        Thread { mjpegServer.start() }.start()
+
+        val handler = Handler(Looper.getMainLooper())
+        val mjpegPushRunnable = object : Runnable {
+            override fun run() {
+                pushPreviewToMjpeg()
+                handler.postDelayed(this, 100) // 10 fps
+            }
+        }
+        handler.post(mjpegPushRunnable)
     }
 
     // Embedded Server Functions
@@ -1630,6 +1659,42 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
         val handler = Handler(Looper.getMainLooper())
         handler.post {
             Toast.makeText(this, text, Toast.LENGTH_LONG).show()
+        }
+    }
+}
+
+class MjpegStreamServer(port: Int = 8090) : NanoHTTPD(port) {
+    private val frameQueue = LinkedBlockingQueue<ByteArray>(2)
+    fun pushFrame(jpeg: ByteArray) {
+        if (!frameQueue.offer(jpeg)) {
+            frameQueue.poll()
+            frameQueue.offer(jpeg)
+        }
+    }
+    override fun serve(session: IHTTPSession): Response {
+        val boundary = "boundary"
+        val response = newChunkedResponse(
+            Response.Status.OK,
+            "multipart/x-mixed-replace; boundary=--$boundary",
+            MJpegInputStream(boundary, frameQueue)
+        )
+        response.addHeader("Connection", "close")
+        return response
+    }
+    class MJpegInputStream(
+        private val boundary: String,
+        private val frameQueue: LinkedBlockingQueue<ByteArray>
+    ) : java.io.InputStream() {
+        private var currentFrame: ByteArray? = null
+        private var currentIndex = 0
+        override fun read(): Int {
+            if (currentFrame == null || currentIndex >= currentFrame!!.size) {
+                val frame = frameQueue.take()
+                val header = ("\r\n--$boundary\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.size}\r\n\r\n").toByteArray()
+                currentFrame = header + frame
+                currentIndex = 0
+            }
+            return currentFrame!![currentIndex++].toInt() and 0xFF
         }
     }
 }
