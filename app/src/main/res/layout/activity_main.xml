@@ -91,9 +91,9 @@
 
     <TextureView
         android:id="@+id/dji_video_texture"
-        android:layout_width="125dp"
-        android:layout_height="130dp"
-        tools:layout_editor_absoluteX="143dp"
-        tools:layout_editor_absoluteY="418dp" />
+        android:layout_width="346dp"
+        android:layout_height="205dp"
+        tools:layout_editor_absoluteX="32dp"
+        tools:layout_editor_absoluteY="401dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
