@@ -57,8 +57,19 @@ import dji.sdk.codec.DJICodecManager
 import dji.sdk.sdkmanager.LiveVideoBitRateMode
 import dji.sdk.sdkmanager.LiveVideoResolution
 
-import fi.iki.elonen.NanoHTTPD
-import java.util.concurrent.LinkedBlockingQueue
+//import fi.iki.elonen.NanoHTTPD
+//import java.util.concurrent.LinkedBlockingQueue
+//
+//import android.os.Handler
+//import android.os.Looper
+//import android.os.SystemClock
+//
+//import android.view.PixelCopy
+//import kotlinx.coroutines.CoroutineScope
+//import kotlinx.coroutines.Dispatchers
+//import kotlinx.coroutines.SupervisorJob
+//import kotlinx.coroutines.launch
+//import android.view.Surface
 
 data class CommandCompleted(val completed: Boolean, val errorDescription: String?)
 
@@ -113,7 +124,7 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
     private lateinit var droneNameText: TextView
     private lateinit var batteryText: TextView
 
-    private lateinit var mjpegServer: MjpegStreamServer
+//    private lateinit var mjpegServer: MjpegStreamServer
 
     private var drone: Aircraft? = null
 
@@ -141,16 +152,303 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
     private var followingVelocityCommands = false
     private var velocityControlRunnable: Runnable? = null
 
-    private fun pushPreviewToMjpeg() {
-        if (::textureView.isInitialized && textureView.isAvailable) {
-            val bitmap = textureView.bitmap // get current frame as Bitmap
-            if (bitmap != null) {
-                val out = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 60, out) // 60 = quality
-                mjpegServer.pushFrame(out.toByteArray())
-            }
-        }
-    }
+    // Diagnostic fields to add at class level in MainActivity
+//    private var lastFramePushTs: Long = 0L
+//    private var producedFrameCounter: Long = 0L
+//    private val producerLogIntervalMs = 5000L
+//    private var lastProducerLogTs: Long = 0L
+//
+//    // Place these fields inside your MainActivity class (adjust names if needed)
+//    private val TAG_INSTR = "ProducerInstr"
+//    private val handler = Handler(Looper.getMainLooper())
+//    private val watchdogHandler = Handler(Looper.getMainLooper())
+//
+//    private var expectedNextRunMs: Long = SystemClock.elapsedRealtime()
+//    private val PRODUCER_INTERVAL_MS: Long = 250L // match your producer schedule (ms)
+//    private val WATCHDOG_INTERVAL_MS: Long = 1000L
+//    private val GAP_THRESHOLD_MS: Long = 2000L // threshold to consider producer stalled
+//
+//    // Producer state tracking (ensure pushPreviewToMjpeg calls markFrameProduced() on success)
+//    @Volatile
+//    private var lastFramePushTs: Long = System.currentTimeMillis()
+//    private var producedFrameCounter: Long = 0L
+//
+//    // --- PixelCopy producer + background JPEG encode (paste into MainActivity) ---
+//
+//    // Coroutine scope for JPEG encoding (IO)
+//    private val jpegEncodingScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+//
+//    // Producer loop handler (use the class-level handler you've already defined)
+//    private var pixelCopyProducerPosted = false
+//    private var pixelCopyIntervalMs: Long = 250L // default 250ms -> 4fps, tune as needed
+//
+//    // Start/stop helpers. Call startPixelCopyProducerLoop(fps) instead of scheduling your old handler.
+//    private fun startPixelCopyProducerLoop(fps: Int = 4) {
+//        stopPixelCopyProducerLoop()
+//        pixelCopyIntervalMs = (1000L / fps).coerceAtLeast(40L)
+//        pixelCopyProducerPosted = true
+//        handler.post(pixelCopyProducerRunnable)
+//        Log.i(TAG, "PixelCopy producer loop started fps=$fps intervalMs=$pixelCopyIntervalMs")
+//    }
+//
+//    private fun stopPixelCopyProducerLoop() {
+//        pixelCopyProducerPosted = false
+//        handler.removeCallbacks(pixelCopyProducerRunnable)
+//        Log.i(TAG, "PixelCopy producer loop stopped")
+//    }
+//
+//    // The runnable that triggers captures
+//    private val pixelCopyProducerRunnable = object : Runnable {
+//        override fun run() {
+//            if (!pixelCopyProducerPosted) return
+//
+//            if (!::textureView.isInitialized || !textureView.isAvailable) {
+//                Log.w(TAG, "PixelCopy producer: textureView not ready, skipping tick")
+//            } else {
+//                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+//                    pushPreviewToMjpeg_pixelcopy()
+//                } else {
+//                    // older devices fallback to existing synchronous path (keeps behaviour)
+//                    pushPreviewToMjpeg_fallback_bitmap()
+//                }
+//            }
+//
+//            handler.postDelayed(this, pixelCopyIntervalMs)
+//        }
+//    }
+//
+//    // PixelCopy-based capture: copies TextureView -> Bitmap, then compresses on IO thread and offers to mjpegServer
+//    private fun pushPreviewToMjpeg_pixelcopy() {
+//        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+//            // fallback to your existing bitmap capture if needed
+//            pushPreviewToMjpeg_fallback_bitmap()
+//            return
+//        }
+//
+//        val surfaceTexture = textureView.surfaceTexture
+//        if (surfaceTexture == null) {
+//            Log.w(TAG, "PixelCopy: textureView.surfaceTexture is null, skipping PixelCopy")
+//            return
+//        }
+//
+//        val bmp = Bitmap.createBitmap(textureView.width, textureView.height, Bitmap.Config.ARGB_8888)
+//        val surface = Surface(surfaceTexture) // temporary wrapper for PixelCopy
+//        val mainHandler = Handler(Looper.getMainLooper())
+//
+//        try {
+//            PixelCopy.request(surface, /* srcRect = */ null, bmp, PixelCopy.OnPixelCopyFinishedListener { copyResult ->
+//                try {
+//                    if (copyResult == PixelCopy.SUCCESS) {
+//                        // offload JPEG compression / offering to IO (example using your scope)
+//                        jpegEncodingScope.launch {
+//                            try {
+//                                val start = SystemClock.elapsedRealtime()
+//                                val out = ByteArrayOutputStream()
+//                                val ok = bmp.compress(Bitmap.CompressFormat.JPEG, 60, out)
+//                                val dur = SystemClock.elapsedRealtime() - start
+//                                if (ok) {
+//                                    val bytes = out.toByteArray()
+//                                    val offered = mjpegServer.offerFrame(bytes)
+//                                    if (offered) markFrameProduced()
+//                                    Log.d(TAG, "PixelCopy: encoded=${bytes.size} offered=$offered compressMs=$dur")
+//                                } else {
+//                                    Log.w(TAG, "PixelCopy: compress returned false (compressMs=$dur)")
+//                                }
+//                            } catch (e: Exception) {
+//                                Log.e(TAG, "PixelCopy: encode/offer exception", e)
+//                            } finally {
+//                                try { bmp.recycle() } catch (_: Exception) {}
+//                            }
+//                        }
+//                    } else {
+//                        Log.w(TAG, "PixelCopy: request failed result=$copyResult")
+//                        try { bmp.recycle() } catch (_: Exception) {}
+//                    }
+//                } finally {
+//                    // release the temporary Surface wrapper to avoid native resource leak
+//                    try { surface.release() } catch (_: Exception) {}
+//                }
+//            }, mainHandler)
+//        } catch (e: Exception) {
+//            Log.e(TAG, "PixelCopy: request threw", e)
+//            try { bmp.recycle() } catch (_: Exception) {}
+//            try { surface.release() } catch (_: Exception) {}
+//        }
+//    }
+//
+//    // Fallback path that uses textureView.bitmap synchronously but still compresses on IO
+//    private fun pushPreviewToMjpeg_fallback_bitmap() {
+//        try {
+//            val bmp = textureView.bitmap
+//            if (bmp == null) {
+//                Log.w(TAG, "Fallback: textureView.bitmap returned null")
+//                return
+//            }
+//            jpegEncodingScope.launch {
+//                try {
+//                    val start = SystemClock.elapsedRealtime()
+//                    val out = ByteArrayOutputStream()
+//                    val ok = bmp.compress(Bitmap.CompressFormat.JPEG, 60, out)
+//                    val dur = SystemClock.elapsedRealtime() - start
+//                    if (!ok) {
+//                        Log.w(TAG, "Fallback IO: compress returned false (dur=${dur}ms)")
+//                    } else {
+//                        val bytes = out.toByteArray()
+//                        val offered = mjpegServer.offerFrame(bytes)
+//                        if (offered) markFrameProduced() else Log.w(TAG, "Fallback IO: offerFrame returned false")
+//                        Log.d(TAG, "Fallback IO: encoded=${bytes.size} offered=$offered durMs=$dur")
+//                    }
+//                } catch (e: Exception) {
+//                    Log.e(TAG, "Fallback IO: compress/offer exception", e)
+//                } finally {
+//                    try { bmp.recycle() } catch (_: Exception) {}
+//                }
+//            }
+//        } catch (e: Exception) {
+//            Log.e(TAG, "Fallback: textureView.bitmap exception", e)
+//        }
+//    }
+//
+//    // Runnable that instruments scheduling and capture duration. Replace your existing scheduled runnable with this.
+//    private val instrumentedProducerRunnable = object : Runnable {
+//        override fun run() {
+//            val now = SystemClock.elapsedRealtime()
+//            val drift = now - expectedNextRunMs
+//            Log.d(TAG_INSTR, "ProducerRunnable.start now=$now expected=$expectedNextRunMs driftMs=$drift")
+//
+//            val runStart = SystemClock.elapsedRealtime()
+//            val produced = try {
+//                pushPreviewToMjpeg()
+//            } catch (e: Exception) {
+//                Log.e(TAG_INSTR, "ProducerRunnable: pushPreviewToMjpeg threw", e)
+//                false
+//            }
+//            val runEnd = SystemClock.elapsedRealtime()
+//
+//            Log.d(TAG_INSTR, "ProducerRunnable.end now=$runEnd runMs=${runEnd - runStart} produced=$produced")
+//
+//            expectedNextRunMs += PRODUCER_INTERVAL_MS
+//            if (expectedNextRunMs < SystemClock.elapsedRealtime()) {
+//                expectedNextRunMs = SystemClock.elapsedRealtime() + PRODUCER_INTERVAL_MS
+//            }
+//            handler.postDelayed(this, PRODUCER_INTERVAL_MS)
+//        }
+//    }
+//
+//    // Watchdog that checks lastFramePushTs and dumps stacks if a gap is detected
+//    private val watchdogRunnable = object : Runnable {
+//        override fun run() {
+//            val gap = System.currentTimeMillis() - lastFramePushTs
+//            Log.d(TAG_INSTR, "WATCHDOG: lastFramePush gapMs=$gap")
+//            if (gap > GAP_THRESHOLD_MS) {
+//                Log.w(TAG_INSTR, "WATCHDOG: gap exceeded ${GAP_THRESHOLD_MS}ms (gap=${gap}ms) - dumping stacks")
+//                dumpAllStacks("producer_gap")
+//            }
+//            watchdogHandler.postDelayed(this, WATCHDOG_INTERVAL_MS)
+//        }
+//    }
+//
+//    // Call this from pushPreviewToMjpeg when a frame was successfully enqueued/offered
+//    private fun markFrameProduced() {
+//        lastFramePushTs = System.currentTimeMillis()
+//        producedFrameCounter++
+//        Log.d(TAG_INSTR, "markFrameProduced: ts=$lastFramePushTs producedCount=$producedFrameCounter")
+//    }
+//
+//    // Dumps all Java thread stacks to logcat. (Optionally write to a file here for later retrieval.)
+//    private fun dumpAllStacks(reason: String) {
+//        try {
+//            val sb = StringBuilder()
+//            sb.append("STACK_DUMP reason=$reason time=${System.currentTimeMillis()}\n")
+//            val all = Thread.getAllStackTraces()
+//            for ((thread, stack) in all) {
+//                sb.append("Thread \"${thread.name}\" id=${thread.id} state=${thread.state}\n")
+//                for (el in stack) {
+//                    sb.append("\t$el\n")
+//                }
+//            }
+//            Log.w(TAG_INSTR, sb.toString())
+//            // Optional: persist sb.toString() to a file for later analysis.
+//        } catch (e: Exception) {
+//            Log.e(TAG_INSTR, "dumpAllStacks failed", e)
+//        }
+//    }
+//
+//    // Helper functions to start/stop instrumentation. Call startInstrumentation() after your MJPEG server and producer loop are created.
+//    private fun startInstrumentation() {
+//        expectedNextRunMs = SystemClock.elapsedRealtime() + PRODUCER_INTERVAL_MS
+//        handler.post(instrumentedProducerRunnable)
+//        watchdogHandler.postDelayed(watchdogRunnable, WATCHDOG_INTERVAL_MS)
+//        Log.i(TAG_INSTR, "Instrumentation started (interval=${PRODUCER_INTERVAL_MS}ms watchdog=${WATCHDOG_INTERVAL_MS}ms gapThreshold=${GAP_THRESHOLD_MS}ms)")
+//    }
+//
+//    // Call this in onPause/onDestroy to stop logging and avoid leaks
+//    private fun stopInstrumentation() {
+//        handler.removeCallbacks(instrumentedProducerRunnable)
+//        watchdogHandler.removeCallbacks(watchdogRunnable)
+//        Log.i(TAG_INSTR, "Instrumentation stopped")
+//    }
+//
+//    // Change signature and body of your producer to return boolean
+//    private fun pushPreviewToMjpeg(): Boolean {
+//        android.util.Log.w(TAG, "Producer: initialized")
+//
+//        try {
+//            if (!::textureView.isInitialized || !textureView.isAvailable) {
+//                android.util.Log.w(TAG, "Producer: textureView not initialized/available")
+//                return false
+//            }
+//
+//            val captureStart = SystemClock.elapsedRealtime()
+//            val bitmap = try {
+//                textureView.bitmap
+//            } catch (e: Exception) {
+//                android.util.Log.e(TAG, "Producer: exception reading textureView.bitmap", e)
+//                return false
+//            }
+//            val captureMs = SystemClock.elapsedRealtime() - captureStart
+//
+//            if (bitmap == null) {
+//                android.util.Log.w(TAG, "Producer: textureView.bitmap returned null (captureMs=$captureMs)")
+//                return false
+//            }
+//
+//            val out = ByteArrayOutputStream()
+//            val compressStart = SystemClock.elapsedRealtime()
+//            val compressOk = try {
+//                bitmap.compress(Bitmap.CompressFormat.JPEG, 60, out)
+//            } catch (e: Exception) {
+//                android.util.Log.e(TAG, "Producer: Bitmap.compress threw", e)
+//                false
+//            }
+//            val compressMs = SystemClock.elapsedRealtime() - compressStart
+//
+//            if (!compressOk) {
+//                android.util.Log.w(TAG, "Producer: Bitmap.compress returned false (compressMs=$compressMs)")
+//                bitmap.recycle()
+//                return false
+//            }
+//
+//            val bytes = out.toByteArray()
+//            val offered = mjpegServer.offerFrame(bytes)
+//            val qSize = mjpegServer.queueSize()
+//
+//            if (offered) {
+//                markFrameProduced()
+//            } else {
+//                android.util.Log.w(TAG, "Producer: offerFrame returned false (queueSize=$qSize)")
+//            }
+//
+//            android.util.Log.d(TAG, "Producer: encoded=${bytes.size} offered=$offered queueSize=$qSize captureMs=$captureMs compressMs=$compressMs")
+//            bitmap.recycle()
+//            return offered
+//        } catch (e: Exception) {
+//            android.util.Log.e(TAG, "Producer: unexpected error", e)
+//            return false
+//        }
+//        android.util.Log.w(TAG, "Producer: completed")
+//
+//    }
 
     //livestream constants
     private var codecManager: DJICodecManager? = null
@@ -187,17 +485,19 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
         sdkManager.registerApp(this, this)
 
         // Start MJPEG server on port 8090 in a background thread
-        mjpegServer = MjpegStreamServer(8090)
-        Thread { mjpegServer.start() }.start()
+//        mjpegServer = MjpegStreamServer(8090)
+//        Thread { mjpegServer.start() }.start()
 
-        val handler = Handler(Looper.getMainLooper())
-        val mjpegPushRunnable = object : Runnable {
-            override fun run() {
-                pushPreviewToMjpeg()
-                handler.postDelayed(this, 100) // 10 fps
-            }
-        }
-        handler.post(mjpegPushRunnable)
+//        val heartbeatHandler = Handler(Looper.getMainLooper())
+//        val heartbeatRunnable = object : Runnable {
+//            override fun run() {
+//                Log.v(HEARTBEAT, "HEARTBEAT main alive ts=${SystemClock.elapsedRealtime()}")
+//                heartbeatHandler.postDelayed(this, 1000L)
+//            }
+//        }
+//        handler.post(heartbeatRunnable)
+//        startPixelCopyProducerLoop(fps = 4) // tune fps (4 used as example)
+//        startInstrumentation()
     }
 
     // Embedded Server Functions
@@ -1632,6 +1932,8 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
         VideoFeeder.getInstance().primaryVideoFeed.removeVideoDataListener(videoDataListener)
         codecManager?.cleanSurface()
         codecManager = null
+//        stopPixelCopyProducerLoop()    // <-- add this
+//        stopInstrumentation()
     }
 
     override fun onComponentChange(
@@ -1663,38 +1965,97 @@ class MainActivity : AppCompatActivity(), DJISDKManager.SDKManagerCallback {
     }
 }
 
-class MjpegStreamServer(port: Int = 8090) : NanoHTTPD(port) {
-    private val frameQueue = LinkedBlockingQueue<ByteArray>(2)
-    fun pushFrame(jpeg: ByteArray) {
-        if (!frameQueue.offer(jpeg)) {
-            frameQueue.poll()
-            frameQueue.offer(jpeg)
-        }
-    }
-    override fun serve(session: IHTTPSession): Response {
-        val boundary = "boundary"
-        val response = newChunkedResponse(
-            Response.Status.OK,
-            "multipart/x-mixed-replace; boundary=--$boundary",
-            MJpegInputStream(boundary, frameQueue)
-        )
-        response.addHeader("Connection", "close")
-        return response
-    }
-    class MJpegInputStream(
-        private val boundary: String,
-        private val frameQueue: LinkedBlockingQueue<ByteArray>
-    ) : java.io.InputStream() {
-        private var currentFrame: ByteArray? = null
-        private var currentIndex = 0
-        override fun read(): Int {
-            if (currentFrame == null || currentIndex >= currentFrame!!.size) {
-                val frame = frameQueue.take()
-                val header = ("\r\n--$boundary\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.size}\r\n\r\n").toByteArray()
-                currentFrame = header + frame
-                currentIndex = 0
-            }
-            return currentFrame!![currentIndex++].toInt() and 0xFF
-        }
-    }
-}
+//class MjpegStreamServer(port: Int = 8090) : NanoHTTPD(port) {
+//    private val frameQueue = LinkedBlockingQueue<ByteArray>(6) // a slightly larger buffer
+//    // keep older method for compatibility if you want
+//    fun pushFrame(jpeg: ByteArray) {
+//        // simple wrapper to preserve older callers; delegates to offerFrame
+//        offerFrame(jpeg)
+//    }
+//
+//    // New: safer offer that returns whether enqueue succeeded and logs dropped frames
+//    fun offerFrame(jpeg: ByteArray): Boolean {
+//        try {
+//            if (frameQueue.offer(jpeg)) return true
+//            // queue is full: drop the oldest and try again
+//            val dropped = frameQueue.poll()
+//            val ok = frameQueue.offer(jpeg)
+//            if (ok) {
+//                android.util.Log.w("MjpegStreamServer", "offerFrame: queue full - dropped oldest frame size=${dropped?.size}")
+//            } else {
+//                // extremely unlikely, but log if it fails again
+//                android.util.Log.e("MjpegStreamServer", "offerFrame: failed to enqueue even after dropping one frame")
+//            }
+//            return ok
+//        } catch (e: Exception) {
+//            android.util.Log.e("MjpegStreamServer", "offerFrame: exception while offering frame", e)
+//            return false
+//        }
+//    }
+//
+//    // New: expose current queue size for diagnostics
+//    fun queueSize(): Int = frameQueue.size
+//
+//    override fun serve(session: IHTTPSession): Response {
+//        val boundary = "boundary"
+//        val response = newChunkedResponse(
+//            Response.Status.OK,
+//            "multipart/x-mixed-replace; boundary=--$boundary",
+//            MJpegInputStream(boundary, frameQueue)
+//        )
+//        response.addHeader("Connection", "close")
+//        response.addHeader("Cache-Control", "no-cache")
+//        return response
+//    }
+//
+//
+//    class MJpegInputStream(
+//        private val boundary: String,
+//        private val frameQueue: LinkedBlockingQueue<ByteArray>
+//    ) : java.io.InputStream() {
+//        private var currentFrame: ByteArray? = null
+//        private var currentIndex = 0
+//
+//        // Poll timeout waiting for frames (ms)
+//        private val FRAME_POLL_TIMEOUT_MS = 2000L
+//        // If we poll this many times without a frame, end the stream.
+//        private val MAX_EMPTY_POLLS = 3
+//        private var consecutiveEmptyPolls = 0
+//
+//        override fun read(): Int {
+//            try {
+//                if (currentFrame == null || currentIndex >= currentFrame!!.size) {
+//                    // Wait up to FRAME_POLL_TIMEOUT_MS for next frame
+//                    val frame = frameQueue.poll(FRAME_POLL_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+//                    if (frame == null) {
+//                        consecutiveEmptyPolls++
+//                        android.util.Log.w("MJpegInputStream", "No frame available (timeout #$consecutiveEmptyPolls)")
+//                        if (consecutiveEmptyPolls >= MAX_EMPTY_POLLS) {
+//                            android.util.Log.i("MJpegInputStream", "Max empty polls reached — signalling EOF to close client")
+//                            return -1 // EOF -> server closes connection
+//                        }
+//                        // No frame this cycle — wait again next read
+//                        // Small sleep to avoid tight loop if caller keeps calling read rapidly
+//                        Thread.sleep(50)
+//                        return read()
+//                    } else {
+//                        consecutiveEmptyPolls = 0
+//                        val header = ("\r\n--$boundary\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.size}\r\n\r\n").toByteArray()
+//                        currentFrame = ByteArray(header.size + frame.size)
+//                        System.arraycopy(header, 0, currentFrame, 0, header.size)
+//                        System.arraycopy(frame, 0, currentFrame, header.size, frame.size)
+//                        currentIndex = 0
+//                        android.util.Log.d("MJpegInputStream", "Pushing frame to client: ${frame.size} bytes (total ${currentFrame!!.size})")
+//                    }
+//                }
+//                return currentFrame!![currentIndex++].toInt() and 0xFF
+//            } catch (ie: InterruptedException) {
+//                Thread.currentThread().interrupt()
+//                return -1
+//            } catch (ex: Exception) {
+//                android.util.Log.e("MJpegInputStream", "Error in MJpegInputStream.read", ex)
+//                return -1
+//            }
+//        }
+//    }
+//}

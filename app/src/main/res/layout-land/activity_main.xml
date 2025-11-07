@@ -14,39 +14,24 @@
         android:textAlignment="center"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.499"
+        app:layout_constraintHorizontal_bias="0.834"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.017" />
-
-    <TextView
-        android:id="@+id/droneNameText"
-        android:layout_width="207dp"
-        android:layout_height="34dp"
-        android:text="@string/none_connected"
-        android:textAlignment="center"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView2"
-        app:layout_constraintVertical_bias="0.032"
-        tools:text="DJI Mavic Mini" />
+        app:layout_constraintVertical_bias="0.04" />
 
     <TextView
         android:id="@+id/batteryText"
-        android:layout_width="109dp"
-        android:layout_height="29dp"
+        android:layout_width="153dp"
+        android:layout_height="26dp"
         android:textAlignment="center"
         android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintHorizontal_bias="0.87"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/droneNameText"
-        app:layout_constraintVertical_bias="0.011"
+        app:layout_constraintVertical_bias="0.039"
         tools:text="Battery: 69%" />
 
     <TextView
@@ -57,22 +42,22 @@
         android:textAlignment="center"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.496"
+        app:layout_constraintHorizontal_bias="0.86"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/batteryText"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintVertical_bias="0.058" />
 
     <TextView
         android:id="@+id/ipText"
-        android:layout_width="258dp"
-        android:layout_height="42dp"
+        android:layout_width="180dp"
+        android:layout_height="88dp"
         android:layout_marginTop="32dp"
         android:textAlignment="center"
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.496"
+        app:layout_constraintHorizontal_bias="0.896"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView6"
         app:layout_constraintVertical_bias="0.0"
@@ -85,17 +70,34 @@
         android:textSize="12sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.028"
+        app:layout_constraintHorizontal_bias="0.866"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.959"
+        app:layout_constraintVertical_bias="0.918"
         tools:text="Registered! SDK Version 4.2.0" />
+
+    <TextView
+        android:id="@+id/droneNameText"
+        android:layout_width="207dp"
+        android:layout_height="34dp"
+        android:text="@string/none_connected"
+        android:textAlignment="center"
+        android:textAppearance="@style/TextAppearance.AppCompat.Small"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.914"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView2"
+        app:layout_constraintVertical_bias="0.04"
+        tools:text="DJI Mavic Mini" />
 
     <TextureView
         android:id="@+id/dji_video_texture"
-        android:layout_width="375dp"
-        android:layout_height="410dp"
-        tools:layout_editor_absoluteX="18dp"
-        tools:layout_editor_absoluteY="260dp" />
+        android:layout_width="423dp"
+        android:layout_height="245dp"
+        tools:layout_editor_absoluteX="38dp"
+        tools:layout_editor_absoluteY="83dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
